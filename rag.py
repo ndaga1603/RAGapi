@@ -22,13 +22,16 @@ class RAGpdf:
     llm = ChatCohere(cohere_api_key=os.getenv("COHERE_API_KEY"))
     database_name = "ChromaDB"
     template = """
-    You are AI assistant for a company that provides services to customers. 
-    Use the the context provided, together with the chat history to answer the question asked, just give a clear and concise answer.
-    if you are unable to answer the question, you can ask for more information, don't answer the question which you are not sure about.
+    You are an AI assistant for a company that offers specialized services to its customers. Your goal is to provide accurate and concise answers based on the given context and chat history. Follow these guidelines:
 
-    context: {context}
-    chat history: {history}
-    question: {question}
+    1. Use the provided context and chat history to formulate your response.
+    2. Ensure your answer is clear, concise, and directly related to the provided context.
+    3. If the question is not relevant to the provided context, respond with: "I'm sorry, but I can only answer questions related to the provided context. Please provide more information or ask a related question."
+    
+    Context: {context}
+    Chat History: {history}
+    Question: {question}
+    
     """
     prompt = PromptTemplate(
         input_variables=["context", "history", "question"],
@@ -85,7 +88,6 @@ class RAGpdf:
     #     except Exception as e:
     #         print(f"Error updating collection '{collection_name}': {e}")
     #         return False
-
 
     def create_chain(self, vectorstore):
         memory = ConversationBufferMemory(memory_key="history", input_key="question")

@@ -1,24 +1,33 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
+import requests
 from flask_restful import Resource, Api
 from rag import RAGpdf
 import threading
 import queue
+import os
+import multiprocessing
+import communications as comm
 
 app = Flask(__name__)
 api = Api(app)
 rag = RAGpdf()
 
+telegram_channel = None
+
+
 class ChatAPI(Resource):
     def __init__(self):
         self.response_queue = queue.Queue()
-        
+
     def post(self):
         # Extracting data from the request
         question = request.form["question"]
         collection_name = request.form["collection_name"]
 
         # Creating a thread to handle the request asynchronously
-        thread = threading.Thread(target=self.process_chat_request, args=(question, collection_name))
+        thread = threading.Thread(
+            target=self.process_chat_request, args=(question, collection_name)
+        )
         thread.start()
 
         # Waiting for the response to be available in the queue
@@ -26,7 +35,6 @@ class ChatAPI(Resource):
 
         # Responding to the client with the received response
         return response
-
 
     def process_chat_request(self, question, collection_name):
         # Handling the request in a separate thread
@@ -36,31 +44,110 @@ class ChatAPI(Resource):
         # Put the response into the queue for the main thread to pick up
         self.response_queue.put(response)
 
+
 class DatabaseAPI(Resource):
     def post(self):
-        # Extracting data from the request
-        document = request.files["document"]
-        collection_name = request.form["collection_name"]
-        
-        # Creating a thread to handle the request asynchronously
-        thread = threading.Thread(target=self.process_database_request, args=(document, collection_name))
-        thread.start()
-        
-        # Responding to the client immediately
-        return {"message": "Request received and is being processed"}
+        try:
+            # Extracting data from the request
+            document = request.files["document"]
+            collection_name = request.form["collection_name"]
 
-    def process_database_request(self, document, collection_name):
-        # Handling the request in a separate thread
-        document_path = document.filename
-        document.save(f"Documents/{document_path}")
-        document.close()    
-        documents = rag.document_loader(f"Documents/{document_path}")
-        texts = rag.text_splitter(documents)
-        rag.create_vectorstore_db(texts, collection_name)
-        return {"message": f"Database {collection_name} created successfully"}
+            # Save the document immediately to ensure it's properly uploaded
+            document_path = os.path.join("Documents", document.filename)
+            os.makedirs("Documents", exist_ok=True)
+            document.save(document_path)
+            document.close()
+
+            # Verify if the file is saved and not empty
+            if not os.path.exists(document_path):
+                raise ValueError("The file was not saved correctly")
+            if os.path.getsize(document_path) == 0:
+                raise ValueError("The uploaded file is empty")
+
+            # Creating a queue to communicate the result back from the thread
+            result_queue = queue.Queue()
+
+            # Creating a thread to handle the request asynchronously
+            thread = threading.Thread(
+                target=self.process_database_request,
+                args=(document_path, collection_name, result_queue),
+            )
+            thread.start()
+            thread.join()  # Wait for the thread to finish
+
+            # Get the result from the queue
+            result = result_queue.get()
+
+            # Responding to the client with the result
+            return jsonify(result)
+        except Exception as e:
+            # Log the error and handle exceptions
+            print(f"Error during document upload: {e}")
+            return {"message": f"Failed to upload document: {str(e)}"}, 500
+
+    def process_database_request(self, document_path, collection_name, result_queue):
+        try:
+            # Handling the request in a separate thread
+            documents = rag.document_loader(document_path)
+            texts = rag.text_splitter(documents)
+            rag.create_vectorstore_db(texts, collection_name)
+            message = {"message": f"Database {collection_name} created successfully"}
+        except Exception as e:
+            message = {
+                "message": f"Failed to create database {collection_name}: {str(e)}"
+            }
+
+        # Put the result message into the queue
+        result_queue.put(message)
+
+
+class SetupTelegramBot(Resource):
+    def post(self):
+        data = request.get_json()
+        token = data.get("token")
+        bot_username = data.get("bot_username")
+        initial_text = data.get("initial_text")
+        help_text = data.get("help_text")
+
+        if not initial_text:
+            initial_text = "Welcome, please let me know how I can assist you."
+
+        if not help_text:
+            help_text = "You can ask me anything about this Organization and I will try to answer your questions."
+
+        if not token:
+            return {"error": "Token is required"}, 400
+
+        global telegram_channel
+        telegram_channel = comm.TelegramChannel()
+        telegram_channel.setup(
+            token=token,
+            initial_text=initial_text,
+            help_text=help_text,
+            bot_username=bot_username,
+        )
+
+        # Set the webhook URL
+        webhook_url = "https://8095-197-250-194-134.ngrok-free.app"
+        response = requests.get(
+            f"https://api.telegram.org/bot{token}/setWebhook?url={webhook_url}"
+        )
+        print(response)
+        if response.status_code != 200:
+            return {"error": "Failed to set webhook"}, 500
+
+        # Start the polling in a separate process
+        telegram_process = multiprocessing.Process(
+            target=telegram_channel.start_polling
+        )
+        telegram_process.start()
+
+        return {"message": "Telegram Bot set up successfully"}
+
 
 api.add_resource(ChatAPI, "/chat")
 api.add_resource(DatabaseAPI, "/database")
+api.add_resource(SetupTelegramBot, "/setup_telegram_bot")
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
