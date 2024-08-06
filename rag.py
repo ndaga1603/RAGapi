@@ -1,4 +1,5 @@
 from langchain_community.vectorstores import Chroma
+from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain_cohere import CohereEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.llms import Ollama
@@ -45,7 +46,7 @@ class RAGpdf:
         return documents
 
     def text_splitter(self, documents):
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         texts = text_splitter.split_documents(documents)
         return texts
 
@@ -93,9 +94,12 @@ class RAGpdf:
         memory = ConversationBufferMemory(memory_key="history", input_key="question")
         chain = RetrievalQA.from_chain_type(
             self.llm,
-            retriever=vectorstore.as_retriever(),
-            chain_type="stuff",
-            chain_type_kwargs={"prompt": self.prompt, "memory": memory},
+            retriever = MultiQueryRetriever.from_llm(
+                retriever=vectorstore.as_retriever(),
+                llm=self.llm,
+            ),
+            chain_type = "stuff",
+            chain_type_kwargs = {"prompt": self.prompt, "memory": memory},
         )
         return chain
 

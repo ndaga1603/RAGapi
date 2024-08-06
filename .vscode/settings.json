@@ -1,0 +1,12 @@
+{
+    "cSpell.words": [
+        "dotenv",
+        "inprogress",
+        "jsonify",
+        "langchain",
+        "llms",
+        "Ollama",
+        "vectorstore",
+        "werkzeug"
+    ]
+}

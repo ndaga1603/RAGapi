@@ -1,14 +1,37 @@
 from flask import Flask, request, jsonify
+from prometheus_client import Summary, Counter, Gauge
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import make_wsgi_app
 import requests
+import logging
 from flask_restful import Resource, Api
 from rag import RAGpdf
 import threading
 import queue
 import os
+import time
 import multiprocessing
 import communications as comm
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Prometheus metrics
+REQUEST_TIME = Summary("request_processing_seconds", "Time spent processing request")
+REQUEST_COUNTER = Counter("http_requests_total", "Total number of HTTP requests")
+ERROR_COUNTER = Counter("http_errors_total", "Total number of HTTP errors")
+IN_PROGRESS = Gauge("inprogress_requests", "Number of requests in progress")
+
 
 app = Flask(__name__)
+
+# Add prometheus wsgi middleware to route /metrics requests
+app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
+
 api = Api(app)
 rag = RAGpdf()
 
@@ -16,6 +39,11 @@ telegram_channel = None
 
 
 class ChatAPI(Resource):
+
+    @REQUEST_TIME.time()
+    @REQUEST_COUNTER.count_exceptions()
+    @IN_PROGRESS.track_inprogress()
+    
     def __init__(self):
         self.response_queue = queue.Queue()
 
@@ -23,6 +51,10 @@ class ChatAPI(Resource):
         # Extracting data from the request
         question = request.form["question"]
         collection_name = request.form["collection_name"]
+
+        logger.info(
+            f"Received chat request: question={question}, collection_name={collection_name}"
+        )
 
         # Creating a thread to handle the request asynchronously
         thread = threading.Thread(
@@ -37,12 +69,20 @@ class ChatAPI(Resource):
         return response
 
     def process_chat_request(self, question, collection_name):
+        start_time = time.time()
         # Handling the request in a separate thread
-        vectorstore = rag.load_vectorstore_db(collection_name=collection_name)
-        chain = rag.create_chain(vectorstore)
-        response = rag.get_answer(chain=chain, question=question)
-        # Put the response into the queue for the main thread to pick up
-        self.response_queue.put(response)
+        try:
+            vectorstore = rag.load_vectorstore_db(collection_name=collection_name)
+            chain = rag.create_chain(vectorstore)
+            response = rag.get_answer(chain=chain, question=question)
+            # Put the response into the queue for the main thread to pick up
+            self.response_queue.put(response)
+            logger.info(f"Processed chat request: question={question}, response={response}")
+        except Exception as e:
+            logger.error(f"Error processing chat request: {e}")
+        finally:
+            elapsed_time = time.time() - start_time
+            logger.info(f"Chat request processed in {elapsed_time} seconds")
 
 
 class DatabaseAPI(Resource):
@@ -83,6 +123,7 @@ class DatabaseAPI(Resource):
         except Exception as e:
             # Log the error and handle exceptions
             print(f"Error during document upload: {e}")
+            logger.error(f"Error during document upload: {e}")
             return {"message": f"Failed to upload document: {str(e)}"}, 500
 
     def process_database_request(self, document_path, collection_name, result_queue):
@@ -128,11 +169,12 @@ class SetupTelegramBot(Resource):
         )
 
         # Set the webhook URL
-        webhook_url = "https://8095-197-250-194-134.ngrok-free.app"
+        webhook_url = os.getenv("WEBHOOK_URL")
         response = requests.get(
             f"https://api.telegram.org/bot{token}/setWebhook?url={webhook_url}"
         )
         print(response)
+        logger.info(f"Setting webhook: {response.status_code}, {response.text}")
         if response.status_code != 200:
             return {"error": "Failed to set webhook"}, 500
 
