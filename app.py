@@ -190,3 +190,6 @@ class SetupTelegramBot(Resource):
 api.add_resource(ChatAPI, "/chat")
 api.add_resource(DatabaseAPI, "/database")
 api.add_resource(SetupTelegramBot, "/setup_telegram_bot")
+
+if __name__ == "__main__":
+    app.run(debug=True, threaded=True)
