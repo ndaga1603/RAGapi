@@ -8,6 +8,7 @@
         "llms",
         "Ollama",
         "vectorstore",
-        "werkzeug"
+        "werkzeug",
+        "wsgi"
     ]
 }
