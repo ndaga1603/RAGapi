@@ -1,14 +1,19 @@
 {
-    "cSpell.words": [
-        "dotenv",
-        "gunicorn",
-        "inprogress",
-        "jsonify",
-        "langchain",
-        "llms",
-        "Ollama",
-        "vectorstore",
-        "werkzeug",
-        "wsgi"
-    ]
+  "cSpell.words": [
+    "apidocs",
+    "Bibi",
+    "dotenv",
+    "gunicorn",
+    "inprogress",
+    "jsonify",
+    "langchain",
+    "llms",
+    "Morogoro",
+    "Ollama",
+    "openapi",
+    "vectorstore",
+    "vectorstores",
+    "werkzeug",
+    "wsgi"
+  ]
 }

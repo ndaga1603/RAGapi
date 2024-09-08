@@ -4,6 +4,8 @@
 
 This documentation provides a detailed overview of a Flask-based application designed to handle chat interactions, document uploads, and Telegram bot integration. The system utilizes asynchronous processing for handling requests and leverages the LangChain library for document processing and query answering.
 
+- **Note: The documentation is found at /apidocs/**
+
 ## System Components
 
 ### Flask Application (main.py)
@@ -86,16 +88,14 @@ The TelegramChannel class sets up and manages a Telegram bot for user interactio
 
 *Example Request*:
 
-`http
-POST /chat
-Content-Type: application/x-www-form-urlencoded
-question=What is the capital of France?&collection_name=general_knowledge`
+`curl -X POST "http://127.0.0.1:5000/chat" -H  "accept: application/json" -H  "Content-Type: application/json" -d "{  \"collection_name\": \"dit_prospectus\",  \"question\": \"where is DIT located in dar es salaam?\"}"`
 
 *Example Response*:
 
 ``` json
 {
-  "result": "The capital of France is Paris."
+  "query": "where is DIT located in dar es salaam?",
+  "result": "DIT is located in the Dar es Salaam city centre, at the junction of Morogoro Road and Bibi Titi Mohamed Street."
 }
 ```
 

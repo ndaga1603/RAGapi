@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flasgger import Swagger
 from prometheus_client import Summary, Counter, Gauge
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from prometheus_client import make_wsgi_app
@@ -28,6 +29,8 @@ IN_PROGRESS = Gauge("inprogress_requests", "Number of requests in progress")
 
 
 app = Flask(__name__)
+swagger = Swagger(app, template_file="swagger.yml")
+
 
 # Add prometheus wsgi middleware to route /metrics requests
 app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/metrics": make_wsgi_app()})
@@ -49,8 +52,8 @@ class ChatAPI(Resource):
 
     def post(self):
         # Extracting data from the request
-        question = request.form["question"]
-        collection_name = request.form["collection_name"]
+        question = request.get_json()["question"]
+        collection_name = request.get_json()["collection_name"]
 
         logger.info(
             f"Received chat request: question={question}, collection_name={collection_name}"
@@ -192,4 +195,5 @@ api.add_resource(DatabaseAPI, "/database")
 api.add_resource(SetupTelegramBot, "/setup_telegram_bot")
 
 if __name__ == "__main__":
-    app.run(debug=True, threaded=True)
+    DEBUG = os.getenv("DEBUG", False)
+    app.run(debug=DEBUG, threaded=True)

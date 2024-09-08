@@ -1,0 +1,164 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "RAG Chatbot API",
+    "description": "API for the RAG Chatbot",
+    "version": "1.0.0",
+    "contact": {
+      "email": "davindaga1603@gmail.com"
+    }
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "tags": [
+    {
+      "name": "chat",
+      "description": "Operations related to chat"
+    },
+    {
+      "name": "database",
+      "description": "Operations related to database"
+    },
+    {
+      "name": "telegram",
+      "description": "Operations related to Telegram"
+    }
+  ],
+  "paths": {
+    "/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get a response to a question",
+        "description": "Get a response to a question from the RAG chatbot",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "The question and database collection name",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "description": "The question to ask the chatbot"
+                },
+                "collection_name": {
+                  "type": "string",
+                  "description": "The name of the database collection to query"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response to the question",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/database": {
+      "post": {
+        "tags": [
+          "database"
+        ],
+        "summary": "Upload a document to create a database",
+        "description": "Upload a document to create a database for the RAG chatbot",
+        "parameters": [
+          {
+            "name": "document",
+            "in": "formData",
+            "description": "The document to upload",
+            "required": true,
+            "type": "file"
+          },
+          {
+            "name": "collection_name",
+            "in": "formData",
+            "description": "The name of the database collection to create",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The result of the database creation",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/setup_telegram_bot": {
+      "post": {
+        "tags": [
+          "telegram"
+        ],
+        "summary": "Set up a Telegram bot",
+        "description": "Set up a Telegram bot for the RAG chatbot",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Telegram bot details",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "description": "The Telegram bot token"
+                },
+                "bot_username": {
+                  "type": "string",
+                  "description": "The Telegram bot username"
+                },
+                "initial_text": {
+                  "type": "string",
+                  "description": "The initial text to send to users"
+                },
+                "help_text": {
+                  "type": "string",
+                  "description": "The help text to send to users"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The result of the Telegram bot setup",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
