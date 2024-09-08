@@ -12,6 +12,7 @@ instance/*
 __pycache__/
 *.py[cod]
 *$py.class
+.vscode/
 
 # C extensions
 *.so
@@ -165,7 +166,7 @@ dmypy.json
 cython_debug/
 
 # personal files
-Tests
+Tests/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
