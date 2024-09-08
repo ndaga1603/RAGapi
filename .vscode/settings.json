@@ -3,6 +3,7 @@
     "apidocs",
     "Bibi",
     "dotenv",
+    "flasgger",
     "gunicorn",
     "inprogress",
     "jsonify",

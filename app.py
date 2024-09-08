@@ -196,4 +196,4 @@ api.add_resource(SetupTelegramBot, "/setup_telegram_bot")
 
 if __name__ == "__main__":
     DEBUG = os.getenv("DEBUG", False)
-    app.run(debug=DEBUG, threaded=True)
+    app.run(debug=DEBUG)
